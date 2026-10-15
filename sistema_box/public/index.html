@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BoxTrack</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 700px; margin: 20px auto; padding: 0 10px; }
+    select, input { padding: 8px; font-size: 16px; }
+    button { padding: 15px 25px; font-size: 18px; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    #status { font-size: 20px; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    td, th { border: 1px solid #ccc; padding: 6px; }
+  </style>
+</head>
+<body>
+  <h1>BoxTrack</h1>
+
+  <p>
+    Box:
+    <select id="box" onchange="atualizar()"></select>
+  </p>
+
+  <p>
+    Placa:
+    <input id="placa" placeholder="ABC1D23">
+  </p>
+
+  <p id="status"></p>
+
+  <p>
+    <button style="background: green" onclick="iniciar()">INICIAR</button>
+    <button style="background: orange" onclick="pausar()">PAUSAR</button>
+    <button style="background: blue" onclick="retomar()">RETOMAR</button>
+    <button style="background: red" onclick="finalizar()">FINALIZAR</button>
+  </p>
+
+  <p>
+    Motivo da pausa:
+    <select id="motivo">
+      <option>Falta de peça</option>
+      <option>Espera de orçamento</option>
+      <option>Outros</option>
+    </select>
+  </p>
+
+  <h3>Serviços</h3>
+  <table>
+    <thead>
+      <tr><th>Box</th><th>Placa</th><th>Status</th><th>Início</th><th>Fim</th></tr>
+    </thead>
+    <tbody id="tabela"></tbody>
+  </table>
+
+  <script>
+    let sessaoAtual = null
+
+    async function carregarBoxes() {
+      const resp = await fetch("/box")
+      const boxes = await resp.json()
+      for (const b of boxes) {
+        document.getElementById("box").innerHTML += `<option value="${b.id}">Box ${b.numero}</option>`
+      }
+    }
+
+    async function atualizar() {
+      const resp = await fetch("/sessao")
+      const sessoes = await resp.json()
+      const boxId = Number(document.getElementById("box").value)
+
+      sessaoAtual = sessoes.find(s => s.box_id == boxId && s.status != "finalizado")
+
+      if (sessaoAtual)
+        document.getElementById("status").innerText = "Status: " + sessaoAtual.status + " | Placa: " + sessaoAtual.placa + " | Início: " + sessaoAtual.inicio
+      else
+        document.getElementById("status").innerText = "Status: livre"
+
+      let linhas = ""
+      for (const s of sessoes) {
+        linhas += `<tr><td>${s.box_id}</td><td>${s.placa}</td><td>${s.status}</td><td>${s.inicio}</td><td>${s.fim ?? "-"}</td></tr>`
+      }
+      document.getElementById("tabela").innerHTML = linhas
+    }
+
+    async function iniciar() {
+      const resp = await fetch("/sessao", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          box_id: Number(document.getElementById("box").value),
+          placa: document.getElementById("placa").value
+        })
+      })
+      if (!resp.ok) {
+        const erro = await resp.json()
+        alert(erro.msg ?? erro)
+      }
+      atualizar()
+    }
+
+    async function pausar() {
+      if (!sessaoAtual) return alert("Nenhum serviço nesse box")
+      const resp = await fetch(`/sessao/${sessaoAtual.id}/pausar`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ motivo: document.getElementById("motivo").value })
+      })
+      const data = await resp.json()
+      if (!resp.ok) alert(data.msg)
+      atualizar()
+    }
+
+    async function retomar() {
+      if (!sessaoAtual) return alert("Nenhum serviço nesse box")
+      const resp = await fetch(`/sessao/${sessaoAtual.id}/retomar`, { method: "PUT" })
+      const data = await resp.json()
+      if (!resp.ok) alert(data.msg)
+      atualizar()
+    }
+
+    async function finalizar() {
+      if (!sessaoAtual) return alert("Nenhum serviço nesse box")
+      const resp = await fetch(`/sessao/${sessaoAtual.id}/finalizar`, { method: "PUT" })
+      const data = await resp.json()
+      if (!resp.ok) alert(data.msg)
+      atualizar()
+    }
+
+    carregarBoxes().then(atualizar)
+  </script>
+</body>
+</html>

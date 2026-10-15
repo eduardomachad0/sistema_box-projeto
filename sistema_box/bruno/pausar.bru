@@ -1,0 +1,17 @@
+meta {
+  name: pausar
+  type: http
+  seq: 4
+}
+
+put {
+  url: http://localhost:3000/sessao/1/pausar
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "motivo": "Falta de peça"
+  }
+}

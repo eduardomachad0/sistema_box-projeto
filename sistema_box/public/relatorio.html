@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BoxTrack - Relatório</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 0 10px; }
+    input { padding: 8px; font-size: 16px; }
+    button { padding: 8px 20px; font-size: 16px; color: white; background: blue; border: none; border-radius: 5px; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    td, th { border: 1px solid #ccc; padding: 6px; }
+    #total { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>BoxTrack - Relatório</h1>
+  <p><a href="/">Voltar</a></p>
+
+  <p>
+    De: <input type="date" id="inicio">
+    Até: <input type="date" id="fim">
+    <button onclick="gerar()">Gerar</button>
+  </p>
+
+  <p id="total"></p>
+
+  <h3>Serviços</h3>
+  <table>
+    <thead>
+      <tr><th>Box</th><th>Placa</th><th>Início</th><th>Fim</th><th>Tempo total</th><th>Pausas</th><th>Trabalhado</th></tr>
+    </thead>
+    <tbody id="servicos"></tbody>
+  </table>
+
+  <h3>Por box</h3>
+  <table>
+    <thead>
+      <tr><th>Box</th><th>Serviços</th><th>Trabalhado</th><th>Pausas</th></tr>
+    </thead>
+    <tbody id="porBox"></tbody>
+  </table>
+
+  <h3>Pausas por motivo</h3>
+  <table>
+    <thead>
+      <tr><th>Motivo</th><th>Quantidade</th><th>Tempo</th></tr>
+    </thead>
+    <tbody id="porMotivo"></tbody>
+  </table>
+
+  <script>
+    async function gerar() {
+      const inicio = document.getElementById("inicio").value
+      const fim = document.getElementById("fim").value
+      const resp = await fetch(`/relatorio?inicio=${inicio}&fim=${fim}`)
+      const dados = await resp.json()
+
+      let linhas = ""
+      let total = 0
+      let pausas = 0
+      for (const s of dados.servicos) {
+        linhas += `<tr><td>${s.box}</td><td>${s.placa}</td><td>${s.inicio}</td><td>${s.fim}</td><td>${s.tempo_total} min</td><td>${s.tempo_pausa} min</td><td>${s.tempo_trabalhado} min</td></tr>`
+        total += s.tempo_total
+        pausas += s.tempo_pausa
+      }
+      document.getElementById("servicos").innerHTML = linhas
+
+      document.getElementById("total").innerText = dados.servicos.length + " serviços | " + total + " min no box | " + pausas + " min em pausa | " + (total - pausas) + " min trabalhados"
+
+      linhas = ""
+      for (const b of dados.porBox) {
+        linhas += `<tr><td>Box ${b.box}</td><td>${b.servicos}</td><td>${b.tempo_trabalhado} min</td><td>${b.tempo_pausa} min</td></tr>`
+      }
+      document.getElementById("porBox").innerHTML = linhas
+
+      linhas = ""
+      for (const m of dados.porMotivo) {
+        linhas += `<tr><td>${m.motivo}</td><td>${m.quantidade}</td><td>${m.tempo} min</td></tr>`
+      }
+      document.getElementById("porMotivo").innerHTML = linhas
+    }
+
+    const hoje = new Date()
+    const data = hoje.getFullYear() + "-" + String(hoje.getMonth() + 1).padStart(2, "0") + "-" + String(hoje.getDate()).padStart(2, "0")
+    document.getElementById("inicio").value = data
+    document.getElementById("fim").value = data
+    gerar()
+  </script>
+</body>
+</html>

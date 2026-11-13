@@ -3,6 +3,10 @@ import { db } from "../database-connect"
 
 export const create = async (c: Context) => {
   const body = await c.req.json()
+  const placa = body.placa.toUpperCase().replace("-", "")
+  if (!/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(placa))
+    return c.json({ msg: "placa inválida" }, { status: 400 })
+
   const emUso = db.query(`
     SELECT id FROM sessao WHERE box_id=:box_id AND status!='finalizado'
   `).get({ ":box_id": body.box_id })
@@ -15,7 +19,7 @@ export const create = async (c: Context) => {
   `)
   const resp = query.run({
     ":box_id": body.box_id,
-    ":placa": body.placa.toUpperCase()
+    ":placa": placa
   })
   return c.json(resp)
 }
